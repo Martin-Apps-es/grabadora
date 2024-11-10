@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Grabadora de Voz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .timer {
+            font-size: 2em;
+            margin: 20px 0;
+            font-family: monospace;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .record-btn {
+            background-color: #ff4444;
+            color: white;
+        }
+
+        .stop-btn {
+            background-color: #444;
+            color: white;
+        }
+
+        .play-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .download-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .audio-player {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Grabadora de Voz</h1>
+        
+        <div class="timer">00:00</div>
+        
+        <div class="controls">
+            <button class="record-btn">Grabar</button>
+            <button class="stop-btn" disabled>Detener</button>
+            <button class="play-btn" disabled>Reproducir</button>
+            <button class="download-btn" disabled>Descargar</button>
+        </div>
+
+        <div class="status">Listo para grabar</div>
+        
+        <audio class="audio-player" controls></audio>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        let timer;
+        let seconds = 0;
+
+        const recordBtn = document.querySelector('.record-btn');
+        const stopBtn = document.querySelector('.stop-btn');
+        const playBtn = document.querySelector('.play-btn');
+        const downloadBtn = document.querySelector('.download-btn');
+        const timerDisplay = document.querySelector('.timer');
+        const audioPlayer = document.querySelector('.audio-player');
+        const status = document.querySelector('.status');
+
+        function updateTimer() {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+            seconds++;
+        }
+
+        recordBtn.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayer.src = audioUrl;
+                    playBtn.disabled = false;
+                    downloadBtn.disabled = false;
+                };
+
+                audioChunks = [];
+                mediaRecorder.start();
+                status.textContent = "Grabando...";
+                
+                seconds = 0;
+                timer = setInterval(updateTimer, 1000);
+                
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+                playBtn.disabled = true;
+                downloadBtn.disabled = true;
+            } catch (err) {
+                console.error('Error al acceder al micrófono:', err);
+                alert('Error al acceder al micrófono. Asegúrate de dar permisos.');
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            clearInterval(timer);
+            status.textContent = "Grabación finalizada";
+            
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+        });
+
+        playBtn.addEventListener('click', () => {
+            audioPlayer.play();
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(audioBlob);
+            link.download = `grabacion_${new Date().toISOString()}.wav`;
+            link.click();
+        });
+    </script>
+</body>
+</html>
